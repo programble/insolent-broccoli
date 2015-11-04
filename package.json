@@ -1,0 +1,31 @@
+{
+  "name": "insolent-broccoli",
+  "version": "0.0.0",
+  "description": "Small web interface to SQLite",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programble/insolent-broccoli.git"
+  },
+  "keywords": [
+    "web",
+    "sql",
+    "sqlite"
+  ],
+  "author": "Curtis McEnroe <curtis@cmcenroe.me> (https://cmcenroe.me)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/programble/insolent-broccoli/issues"
+  },
+  "homepage": "https://github.com/programble/insolent-broccoli#readme",
+  "dependencies": {
+    "body-parser": "^1.14.1",
+    "express": "^4.13.3",
+    "morgan": "^1.6.1",
+    "serve-static": "^1.10.0",
+    "sqlite3": "^3.1.1"
+  }
+}
