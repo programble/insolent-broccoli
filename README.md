@@ -25,7 +25,7 @@ Environment variable | Default                    | Description
 `DATABASE_MODE`      | `r`                        | SQLite mode, `rw` for read/write
 `LOG_SQL`            | `true`                     | Log SQL queries
 `LOG_ERROR`          | `true`                     | Log query errors
-`TITLE`              | "Insolent Broccoli"        | Page title
+`TITLE`              | Insolent Broccoli          | Page title
 `DEFAULT_QUERY`      | `SELECT 'world' AS hello;` | Initial query
 
 ## License
