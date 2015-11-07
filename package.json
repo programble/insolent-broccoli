@@ -1,6 +1,6 @@
 {
   "name": "insolent-broccoli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Small web interface to SQLite",
   "main": "index.js",
   "bin": {
