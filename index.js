@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 
 let path = require('path');
@@ -17,7 +18,7 @@ let config = {
   logError: process.env.LOG_ERROR !== 'false',
 
   title: process.env.TITLE || 'Insolent Broccoli',
-  defaultQuery: process.env.DEFAULT_QUERY || 'SELECT 1 AS a, 2 AS b, 3 AS c;',
+  defaultQuery: process.env.DEFAULT_QUERY || "SELECT 'world' AS hello;",
 };
 
 let db = new sqlite3.Database(config.databasePath, config.databaseMode);
