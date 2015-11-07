@@ -14,6 +14,7 @@ let config = {
     : sqlite3.OPEN_READONLY,
 
   logSQL: process.env.LOG_SQL !== 'false',
+  logError: process.env.LOG_ERROR !== 'false',
 
   title: process.env.TITLE || 'Insolent Broccoli',
   defaultQuery: process.env.DEFAULT_QUERY || 'SELECT 1 AS a, 2 AS b, 3 AS c;',
@@ -73,7 +74,7 @@ let server = http.createServer((req, res) => {
 
     db.all(qs.sql, (err, rows) => {
       if (err) {
-        console.error(err.stack);
+        if (config.logError) console.error(err.stack);
         jsonResponse(res, { error: err.message });
         return;
       }
