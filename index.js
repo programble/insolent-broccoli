@@ -1,67 +1,204 @@
-var path = require('path');
-var R = require('ramda');
-var express = require('express');
-var morgan = require('morgan');
-var serveStatic = require('serve-static');
-var bodyParser = require('body-parser');
-var sqlite3 = require('sqlite3');
+'use strict';
 
-var config = {
+let path = require('path');
+let http = require('http');
+let querystring = require('querystring');
+let sqlite3 = require('sqlite3');
+
+let config = {
   port: process.env.PORT || 3000,
-  databasePath: process.env.DATABASE_PATH || 'example.sqlite',
+
+  databasePath: process.env.DATABASE_PATH || ':memory:',
   databaseMode: process.env.DATABASE_MODE === 'rw'
     ? sqlite3.OPEN_READWRITE
     : sqlite3.OPEN_READONLY,
-  morganFormat: process.env.MORGAN_FORMAT || 'tiny',
-  logSQL: process.env.LOG_SQL === 'true',
+
+  logSQL: process.env.LOG_SQL !== 'false',
+
+  title: process.env.TITLE || 'Insolent Broccoli',
+  defaultQuery: process.env.DEFAULT_QUERY || 'SELECT 1 AS a, 2 AS b, 3 AS c;',
 };
 
-var app = express();
-var db = new sqlite3.Database(config.databasePath, config.databaseMode);
+let db = new sqlite3.Database(config.databasePath, config.databaseMode);
 
-app.use(morgan(config.morganFormat));
-app.use(serveStatic(path.join(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+function defaultResponse(res, status) {
+  res.writeHead(status, {
+    'Content-Type': 'text/plain',
+    'Content-Length': http.STATUS_CODES[status].length + 1,
+  });
+  res.end(http.STATUS_CODES[status] + '\n');
+}
 
-app.post('/sql', function(req, res, next) {
-  if (!req.body.sql) {
-    res.status(400);
-    res.json({ error: 'no sql' });
+function jsonResponse(res, obj) {
+  let json = JSON.stringify(obj);
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(json),
+  });
+  res.end(json);
+}
+
+let server = http.createServer((req, res) => {
+  if (req.url === '/') {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=UTF-8',
+      'Content-Length': Buffer.byteLength(indexHTML),
+    });
+    res.end(indexHTML);
     return;
   }
 
-  if (config.logSQL) {
-    console.log('SQL:', req.body.sql);
+  if (req.url !== '/sql' || req.method !== 'POST') {
+    defaultResponse(res, 404);
+    return;
   }
 
-  db.all(req.body.sql, function(err, rows) {
-    res.status(200);
-    if (err) {
-      console.error(err.stack);
-      return res.json({ error: err.message });
+  if (!req.headers['content-type'].startsWith('application/x-www-form-urlencoded')) {
+    defaultResponse(res, 400);
+    return;
+  }
+
+  let chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    let data = Buffer.concat(chunks);
+    let qs = querystring.parse(data.toString());
+
+    if (!qs.sql) {
+      defaultResponse(res, 400);
+      return;
     }
 
-    var columns = R.keys(rows[0]);
-    var values = R.map(R.values, rows);
+    if (config.logSQL) console.log(qs.sql);
 
-    res.json({
-      columns: columns,
-      rows: values,
+    db.all(qs.sql, (err, rows) => {
+      if (err) {
+        console.error(err.stack);
+        jsonResponse(res, { error: err.message });
+        return;
+      }
+
+      let keys = Object.keys(rows[0] || {});
+      let values = rows.map(row => keys.map(key => row[key]));
+
+      jsonResponse(res, { columns: keys, rows: values });
     });
   });
 });
 
-app.use(function(err, req, res, next) {
-  console.error(err.stack);
-  res.status(500);
-  res.json({ error: 'internal server error' });
-});
-
 if (require.main === module) {
-  var server = app.listen(config.port, function() {
-    console.log('server started on port', server.address().port);
-  });
+  server.listen(config.port, () =>
+    console.log('server started on port', server.address().port)
+  );
 }
 
-module.exports = app;
+module.exports = server;
+
+let indexHTML = `
+<!DOCTYPE html>
+<title>${ config.title }</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+<style>
+  * { font-family: Menlo,Monaco,Consolas,Courier New,monospace; }
+  form { margin-top: 20px; margin-bottom: 20px; }
+</style>
+
+<div class="container-fluid">
+  <form>
+    <div class="input-group">
+      <input type="text" class="form-control" autofocus value="${ config.defaultQuery }">
+      <span class="input-group-btn">
+        <button class="btn btn-default" type="submit">Run</button>
+      </span>
+    </div>
+  </form>
+  <div id="console">
+  </div>
+</div>
+
+<script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<script>
+  $(function() {
+    var lastQuery = '';
+
+    var $form = $('form');
+    var $input = $('input');
+    var $console = $('#console');
+
+    $input.keyup(function(e) {
+      if (e.which !== 38 && e.which !== 40) return;
+      e.preventDefault();
+
+      var currentQuery = $input.val();
+      $input.val(lastQuery);
+      lastQuery = currentQuery;
+    });
+
+    $form.submit(function(e) {
+      e.preventDefault();
+
+      var query = $input.val();
+      $.post('/sql', { sql: query }, function(res) {
+        var $panel = $('<div>')
+          .addClass('panel')
+          .prependTo($console);
+        var $panelHeading = $('<div>')
+          .addClass('panel-heading')
+          .text(query)
+          .appendTo($panel);
+        $('<a>')
+          .text('#')
+          .attr('href', '#' + encodeURIComponent(query))
+          .addClass('pull-right')
+          .appendTo($panelHeading);
+
+        if (res.error) {
+          $panel.addClass('panel-danger');
+          $('<div>')
+            .addClass('panel-body')
+            .appendTo($panel)
+            .append($('<p>').text(res.error));
+        } else {
+          $panel.addClass('panel-default');
+
+          var $div = $('<div>')
+            .addClass('table-responsive')
+            .appendTo($panel);
+          var $table = $('<table>')
+            .addClass('table table-hover table-condensed table-bordered')
+            .appendTo($div);
+
+          var $tr = $('<tr>').appendTo($table);
+          res.columns.forEach(function(col) {
+            $tr.append($('<th>').text(col));
+          });
+
+          res.rows.forEach(function(row) {
+            var $tr = $('<tr>').appendTo($table);
+            row.forEach(function(value) {
+              if (value !== null) {
+                $tr.append($('<td>').text(value));
+              } else {
+                $tr.append($('<td>'));
+              }
+            });
+          });
+        }
+
+        lastQuery = query;
+        $input.val('');
+      });
+    });
+
+    if (window.location.hash) {
+      $input.val(decodeURIComponent(window.location.hash.slice(1)));
+    }
+
+    $form.submit();
+  });
+</script>
+`;

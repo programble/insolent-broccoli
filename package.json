@@ -4,6 +4,7 @@
   "description": "Small web interface to SQLite",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,11 +23,9 @@
   },
   "homepage": "https://github.com/programble/insolent-broccoli#readme",
   "dependencies": {
-    "body-parser": "^1.14.1",
-    "express": "^4.13.3",
-    "morgan": "^1.6.1",
-    "ramda": "^0.18.0",
-    "serve-static": "^1.10.0",
     "sqlite3": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=4.0.0"
   }
 }
