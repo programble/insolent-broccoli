@@ -2,8 +2,6 @@
 
 Small web interface to SQLite.
 
-[Demo](http://insolent-broccoli.app.cmcenroe.me)
-
 ## Install
 
 ```
